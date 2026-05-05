@@ -45,8 +45,7 @@ Plus a small set of features that make this useful in a real kitchen:
 - **Row-level security from the database up.** A worker physically cannot read another restaurant's data, no matter what the front-end does.
 
 ## Live demo
-
-Coming soon. Until then, follow the [Quick start](#quick-start) below to spin up your own copy in about 15 minutes.
+https://youtu.be/1UdeHPv0cTg?si=OO66IaSJYH6OdTPO
 
 ## Architecture at a glance
 
