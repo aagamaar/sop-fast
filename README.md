@@ -2,6 +2,8 @@
 
 > **Standard operating procedures for restaurants that actually run.**
 > Replace the dog-eared clipboard above the prep station with something workers actually use.
+> <img width="1280" height="720" alt="Untitled design" src="https://github.com/user-attachments/assets/f3d4cc68-51dd-4e35-914e-0a7cb5e29e17" />
+
 
 [![Built with Supabase](https://img.shields.io/badge/Built_with-Supabase-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
