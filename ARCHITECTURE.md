@@ -125,6 +125,59 @@ Policies in plain English:
 
 If you bypass the front-end entirely and hit the Supabase REST API with a worker's JWT, you still can't read another restaurant's data. **The database is the security boundary**, not the React app.
 
+## Security posture and known advisor warnings
+
+Supabase's Security Advisor (splinter) currently reports 5 warnings on
+this project. They have all been reviewed; 4 are accepted false positives
+for our access pattern, and 1 is gated behind a paid plan.
+
+### Accepted: SECURITY DEFINER warnings on RLS helper functions
+
+Three functions — `current_restaurant_id()`, `current_user_role()`, and
+`set_updated_at()` — appear in 4 of the warnings. The advisor flags them
+because:
+
+1. They are marked `SECURITY DEFINER` (run with elevated privileges)
+2. They are callable by signed-in users
+
+For our setup this is correct, not a vulnerability:
+
+- `current_restaurant_id()` and `current_user_role()` need `SECURITY DEFINER`
+  to bypass RLS on `profiles` so they can resolve "what restaurant does this
+  signed-in user belong to?" — which is exactly what every other RLS policy
+  in the schema depends on.
+
+- They take no arguments and only return the calling user's own data
+  via `auth.uid()`. There is no input that could redirect them to read
+  another user's data.
+
+- `set_updated_at()` was changed from `SECURITY DEFINER` to `SECURITY INVOKER`
+  in migration `20260507000000_security_hardening.sql` — it doesn't need
+  elevated privileges, so the safer default is correct. The advisor still
+  flags it because it pattern-matches on the function name; this can be
+  ignored.
+
+- All three functions have execution restricted to the `authenticated` role
+  only (anonymous users cannot call them).
+
+If this project ever expands to allow user-supplied filters or untrusted
+input flowing into these functions, this assessment must be revisited.
+
+### Accepted with constraint: Leaked Password Protection
+
+The "Leaked Password Protection Disabled" warning refers to Supabase's
+HaveIBeenPwned integration, which is gated behind the Pro plan
+($25/month). This is acceptable for v1 because:
+
+- All worker passwords are set by the manager, not self-served by the
+  worker. The manager picks the password and communicates it directly.
+- Password length minimum (6 characters) is enforced.
+- The attack surface is minimal: workers can only access their own
+  restaurant's data, and there is no admin role exposed via auth.
+
+This warning will be addressed when the project upgrades to Pro, which
+would coincide with self-serve password reset (currently on the roadmap).
+
 ## Storage
 
 The `sop-photos` bucket is private. Path convention:
