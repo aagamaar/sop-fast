@@ -6,7 +6,7 @@ What's next, in rough priority order. This is a working document — open an iss
 
 These are sharp edges that bite you the moment a real restaurant uses this.
 
-- **Edge Function for worker creation.** Replace the two-step client-side `createWorker` with a single Supabase Edge Function that creates the auth user and the profile row in one server-side transaction. Eliminates the orphaned-auth-user risk and the session-restore hack.
+- ~~**Edge Function for worker creation.**~~ ✅ **Shipped.** See `supabase/functions/create-worker/`. Atomically creates auth user + profile, validates caller is a manager, rolls back on failure.
 - **Self-serve password reset.** Right now, a forgotten password means the manager opens the Supabase dashboard. Once the Edge Function above is in place, add a "I forgot my password" flow where the manager generates a temporary password from the Workers tab.
 - **History pagination.** The worker's History tab currently loads all completions ever. After 30+ days of usage on a busy phone, this gets sluggish. Limit to 30 days by default with a "load more" button.
 - **Soft delete for workers.** Removing a worker currently deletes the `profiles` row but leaves the `auth.users` row orphaned. Switch to a soft delete (`profiles.archived = true`) so we can rejoin them later if they come back, and so old completions still show their name in history.
