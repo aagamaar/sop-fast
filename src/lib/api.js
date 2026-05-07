@@ -95,16 +95,33 @@ export const createWorker = async ({ name, phone, password, workerRole, restaura
 // Photo upload to Supabase Storage
 // ============================================================================
 export const uploadStepPhoto = async ({ workerId, sopId, stepId, file }) => {
-  const ext = file.name.split('.').pop() || 'jpg';
+  // Guardrails for public deployment
+  const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+
+  if (file.size > MAX_SIZE) {
+    return {
+      error: new Error("Photo must be under 5MB. Try a smaller image."),
+      url: null,
+    };
+  }
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return {
+      error: new Error("Only JPG, PNG, WebP, or HEIC images allowed."),
+      url: null,
+    };
+  }
+
+  const ext = file.name.split(".").pop() || "jpg";
   const path = `${workerId}/${sopId}/${stepId}/${Date.now()}.${ext}`;
   const { error: uploadError } = await supabase.storage
-    .from('sop-photos')
+    .from("sop-photos")
     .upload(path, file, { upsert: true });
   if (uploadError) return { error: uploadError, url: null };
 
   // For private buckets, get a signed URL (1 day expiry, refreshed on each load)
   const { data: signed, error: signError } = await supabase.storage
-    .from('sop-photos')
+    .from("sop-photos")
     .createSignedUrl(path, 60 * 60 * 24);
   if (signError) return { error: signError, url: null };
   return { error: null, url: signed.signedUrl, path };
