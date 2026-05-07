@@ -20,7 +20,7 @@ export default function WorkersManager({ workers, restaurantId, onChange }) {
     }
     setBusy(true);
     setError('');
-    const { error } = await createWorker({ ...form, restaurantId });
+    const { error } = await createWorker({ ...form });
     setBusy(false);
     if (error) {
       setError(error.message);

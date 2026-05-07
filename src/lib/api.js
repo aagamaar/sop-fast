@@ -38,57 +38,36 @@ export const isFullyComplete = (sop, completion) => {
 // ============================================================================
 // Worker creation
 // ============================================================================
-// Creating a worker is a TWO step operation:
-//   1. Create the auth user (via signUp)
-//   2. Insert into profiles (linking auth.users.id to restaurant + role)
+// Calls the create-worker Edge Function which atomically:
+//   1. Creates the auth user (using service role, no session side effects)
+//   2. Inserts the profile row in the same restaurant as the calling manager
+// The function verifies the caller is a manager before doing anything.
 //
-// In production, you'd want this to happen atomically — one option is a
-// Supabase Edge Function with the service role key. For v1, we do it
-// client-side. If step 2 fails, we'll have an orphaned auth user — rare
-// but possible. ROADMAP.md tracks this.
-export const createWorker = async ({ name, phone, password, workerRole, restaurantId }) => {
-  const email = phoneToEmail(phone);
-
-  // 1. Create auth user. signUp creates and immediately signs in the new user
-  // by default — but since email confirmation is OFF for our setup, the user
-  // is auto-confirmed and a session is created.
-  //
-  // CRITICAL: this signs the new user in, kicking the manager out. To avoid
-  // that we save the manager's session and restore it after.
-  const currentSession = (await supabase.auth.getSession()).data.session;
-
-  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-    email,
-    password
-  });
-  if (signUpError) return { error: signUpError };
-  if (!signUpData.user) return { error: new Error('Sign up returned no user') };
-
-  // Restore manager's session immediately
-  if (currentSession) {
-    await supabase.auth.setSession({
-      access_token: currentSession.access_token,
-      refresh_token: currentSession.refresh_token
-    });
+// `restaurantId` is no longer passed from the client — the function reads it
+// from the caller's profile, so a manager can never create a worker in
+// another restaurant even if they tampered with the request.
+export const createWorker = async ({ name, phone, password, workerRole }) => {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    return { error: new Error('Not signed in') };
   }
 
-  // 2. Insert profile row
-  const { error: profileError } = await supabase.from('profiles').insert({
-    id: signUpData.user.id,
-    restaurant_id: restaurantId,
-    role: 'worker',
-    full_name: name,
-    phone: phone.replace(/\D/g, ''),
-    worker_role: workerRole || null
+  const { data, error } = await supabase.functions.invoke('create-worker', {
+    body: { name, phone, password, workerRole },
   });
 
-  if (profileError) {
-    // We could try to delete the orphaned auth user here, but that requires
-    // the service role key which we don't expose to the client.
-    return { error: profileError };
+  if (error) {
+    // Try to surface a useful message from the function's response body
+    let detail = error.message;
+    try {
+      const ctx = await error.context?.json();
+      if (ctx?.error) detail = ctx.error;
+    } catch { /* ignore */ }
+    return { error: new Error(detail) };
   }
 
-  return { error: null, workerId: signUpData.user.id };
+  return { error: null, workerId: data?.workerId };
 };
 
 // ============================================================================

@@ -6,5 +6,7 @@ dist/
 *.log
 .DS_Store
 .vite/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
+supabase/.temp/
